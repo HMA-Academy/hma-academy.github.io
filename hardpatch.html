@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hard Patch Trainer – SmartPack & Harting</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .rack-wrapper {
+      position: relative;
+      width: 1100px;
+      max-width: 100%;
+      aspect-ratio: 11 / 6;
+      margin: 0 auto 20px auto;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.8);
+    }
+
+    .rack-bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, #363636, #1f1f1f);
+      z-index: 0;
+    }
+
+    .rack-frame {
+      position: absolute;
+      inset: 10px;
+      border-radius: 12px;
+      border: 1px solid #555;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+      z-index: 1;
+    }
+
+    .rack-screws {
+  position: absolute;
+  inset: 10px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.rack-screw {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #666;
+  background:
+    radial-gradient(circle at 30% 30%, #f2f2f2 0%, #bfbfbf 35%, #4b4b4b 70%, #111 100%);
+  box-shadow:
+    0 0 3px rgba(0,0,0,0.9),
+    inset 0 0 2px rgba(0,0,0,0.9);
+}
+
+/* sleuf in de schroef (slot-head), licht gedraaid */
+.rack-screw::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 70%;
+  height: 2px;
+  border-radius: 2px;
+  background: #333;
+  box-shadow:
+    0 0 1px rgba(0,0,0,0.8),
+    0 0 2px rgba(255,255,255,0.3);
+  transform: translate(-50%, -50%) rotate(18deg);
+}
+
+/* optioneel: kleine highlight */
+.rack-screw::after {
+  content: "";
+  position: absolute;
+  left: 25%;
+  top: 25%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.9), transparent);
+  opacity: 0.8;
+}
+
+/* 4 hoeken */
+.rack-screw--tl { top: +20px; left: -6px; }
+.rack-screw--tr { top: +20px; right: -6px; }
+.rack-screw--bl { bottom: +20px; left: -6px; }
+.rack-screw--br { bottom: +20px; right: -6px; }
+
+/* 2 schroeven aan einde dimmer outputs (links/rechts) */
+.rack-screw--dim-left  { top: 36%; left: -6px; }
+.rack-screw--dim-right { top: 36%; right: -6px; }
+
+/* 2 schroeven aan begin multi's (links/rechts) */
+.rack-screw--multi-left  { top: 44%; left: -6px; }
+.rack-screw--multi-right { top: 44%; right: -6px; }
+
+    .panel {
+      position: absolute;
+      inset: 25px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #2f2f2f, #151515);
+      border: 1px solid #444;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 18px;
+      gap: 10px;
+      z-index: 3;
+    }
+
+    .panel-section-title {
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+
+    /* TOP: dimmer strip – licht grijs blok */
+    .outputs-section {
+      margin-bottom: 4px;
+      padding: 8px;
+      border-radius: 8px;
+      background: #e2e2df;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.8),
+        0 1px 0 rgba(0,0,0,0.7);
+      color: #222;
+    }
+
+    .outputs-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title-row {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+
+    .spacer-row {
+      height: 6px;
+    }
+
+    .row-grid {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      column-gap: 4px;
+      align-items: center;
+    }
+
+    .channel-label {
+      font-size: 10px;
+      color: #222;
+      font-weight: 900; /* Bold */
+      text-align: center;
+    }
+
+    .multi-label {
+      font-size: 11px;
+      color: #333;
+      font-weight: 900; /* Bold */
+      text-align: center;
+      padding: 2px 0;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: #d4d4d4;
+    }
+
+    .divider {
+      height: 1px;
+      margin: 4px 0 2px;
+      background: linear-gradient(90deg, transparent, #555, transparent);
+      opacity: 0.7;
+    }
+
+    /* BOTTOM: Harting – matrix van 24 kolommen */
+    .inputs-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+      padding: 4px 4px 0;
+    }
+
+    .inputs-blocks {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    /* Jacks */
+    .jack {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      border: 3px solid #555;
+      background: radial-gradient(circle at 30% 30%, #757575, #222);
+      box-shadow: 0 0 4px rgba(0,0,0,0.8);
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      justify-self: center;
+    }
+
+    .jack::after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border-radius: 2px;
+      background: radial-gradient(circle at 30% 30%, #111, #000);
+      box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.18);
+    }
+
+    .jack.selected {
+      border-color: #f6d365;
+      box-shadow:
+        0 0 5px rgba(0, 0, 0, 0.8),
+        0 0 8px rgba(246, 211, 101, 0.9);
+    }
+
+    .jack.correct {
+      border-color: #8be38b;
+      box-shadow:
+        0 0 6px rgba(0, 0, 0, 0.8),
+        0 0 10px rgba(139,227,139,0.9);
+    }
+
+    .cable-layer {
+      position: absolute;
+      inset: 25px;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    button {
+      background: #333;
+      border-radius: 999px;
+      border: 1px solid #666;
+      padding: 6px 14px;
+      color: #eee;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.05s;
+    }
+
+    button:hover {
+      background: #444;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .status {
+      display: inline-block;
+      padding: 10px 18px;
+      font-size: 14px; /* groter */
+      font-weight: 500; /* bold */
+      border-radius: 8px;
+      background: #333;
+      border: 2px solid #555;
+    }
+
+    .status-container {
+      width: 100%
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .status.ok {
+      color: #8be38b;
+    }
+
+    .status.error {
+      color: #f28b8b;
+    }
+
+    .status.neutral {
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hard Patch Trainer</h1>
+  
+  <div class="controls">
+    <button id="resetBtn">Reset patch</button>
+    <button id="checkBtn">Check oefening</button>
+    <button id="showCorrectionBtn">Toon verbetering</button>
+  </div>
+
+  <div class="rack-wrapper" id="rackWrapper">
+    <div class="rack-bg"></div>
+    <div class="rack-frame"></div>
+    <div class="rack-screws">
+  <!-- Hoekschroeven -->
+  <div class="rack-screw rack-screw--tl"></div>
+  <div class="rack-screw rack-screw--tr"></div>
+  <div class="rack-screw rack-screw--bl"></div>
+  <div class="rack-screw rack-screw--br"></div>
+
+  <!-- Einde dimmer outputs (vlak onder de dimmersectie) -->
+  <div class="rack-screw rack-screw--dim-left"></div>
+  <div class="rack-screw rack-screw--dim-right"></div>
+
+  <!-- Begin multi's (vlak boven de Harting-sectie) -->
+  <div class="rack-screw rack-screw--multi-left"></div>
+  <div class="rack-screw rack-screw--multi-right"></div>
+</div>
+
+    <svg class="cable-layer" id="cableLayer"></svg>
+
+    <div class="panel" id="panel">
+      <!-- TOP: dimmer outputs -->
+      <div class="outputs-section">
+        <div class="outputs-grid" id="outputsGrid">
+          <!-- R1: titel -->
+          <div class="title-row">ETC Smartpack Dimmer 36CH - Hardpatch</div>
+          <!-- R2 & R3: lege ruimte -->
+          <div class="spacer-row"></div>
+          <div class="spacer-row"></div>
+
+          <!-- R4: jacks pack 1 -->
+          <div class="row-grid" id="dimRow1"></div>
+          <!-- R5: labels 1-12 -->
+          <div class="row-grid" id="dimLabels1"></div>
+          <!-- R6: jacks pack 2 -->
+          <div class="row-grid" id="dimRow2"></div>
+          <!-- R7: labels 1-12 -->
+          <div class="row-grid" id="dimLabels2"></div>
+          <!-- R8: jacks pack 3 -->
+          <div class="row-grid" id="dimRow3"></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- BOTTOM: Harting inputs -->
+      <div class="inputs-section">
+        <div class="inputs-blocks" id="inputsBlocks">
+          <!-- R10: labels OUT 1–3 -->
+          <div class="row-grid" id="multiLabels1"></div>
+          <!-- R11: jacks OUT 1–3 -->
+          <div class="row-grid" id="multiRow1"></div>
+          <!-- R12: labels OUT 4–6 -->
+          <div class="row-grid" id="multiLabels2"></div>
+          <!-- R13: jacks OUT 4–6 -->
+          <div class="row-grid" id="multiRow2"></div>
+          <!-- R14: labels OUT 7–8 -->
+          <div class="row-grid" id="multiLabels3"></div>
+          <!-- R15: jacks OUT 7–8 (16 jacks) -->
+          <div class="row-grid" id="multiRow3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-container">
+    <span id="status" class="status neutral">Maak een patch om te starten.</span>
+  </div>
+
+  <script>
+    // --- CONFIG ---
+
+    const dimmerOutputs = Array.from({ length: 36 }, (_, i) => ({
+      id: `dim-${i + 1}`
+    }));
+
+    const hartings = Array.from({ length: 8 }, (_, i) => i + 1);
+    const circuitsPerHarting = 8;
+
+    // === OEFENINGENCONFIG ===
+    // Hier vul je je concrete oefening in.
+    // Per item: dim = dimmerkanaal (1–36), harting = multicore out (1–8), circuit = core (1–8).
+
+    const exercise1 = [
+      // VOORBEELD – vervang dit door jouw echte waarden
+      { dim: 1,  harting: 1, circuit: 1 },
+      { dim: 2,  harting: 1, circuit: 2 },
+      { dim: 3,  harting: 1, circuit: 3 },
+      { dim: 4,  harting: 1, circuit: 4 },
+      { dim: 36,  harting: 1, circuit: 8 },
+      // ... vul hier verder aan wat je wil gebruiken
+    ];
+
+    // Kies hier welke oefening actief is
+    const activeExercise = exercise1;
+
+    // Bouw correctPatch op basis van de gekozen oefening
+    const correctPatch = {};
+    activeExercise.forEach(item => {
+      const dimId = `dim-${item.dim}`;
+      const channelId = `out-${item.harting}-ch-${item.circuit}`;
+      correctPatch[dimId] = channelId;
+    });
+
+
+    // --- STATE ---
+
+    let selectedJack = null;
+    let connections = [];   // { outJackId, outChannelId, inJackId, inChannelId, isCorrect }
+    let correctionMode = false;
+
+    // --- DOM refs ---
+
+    const rackWrapper = document.getElementById("rackWrapper");
+    const panel = document.getElementById("panel");
+    const cableLayer = document.getElementById("cableLayer");
+    const statusEl = document.getElementById("status");
+
+    // --- BUILD UI ---
+
+    function buildOutputs() {
+      // Pack 1: dim 1-12 op dimRow1
+      fillDimRow("dimRow1", 0);   // index start 0 => dim-1..12
+      fillLabelRow("dimLabels1");
+      // Pack 2: dim 13-24
+      fillDimRow("dimRow2", 12);  // index start 12 => dim-13..24
+      fillLabelRow("dimLabels2");
+      // Pack 3: dim 25-36
+      fillDimRow("dimRow3", 24);  // index start 24 => dim-25..36
+    }
+
+    function fillDimRow(rowId, offset) {
+      const row = document.getElementById(rowId);
+      for (let c = 0; c < 12; c++) {
+        const dimIndex = offset + c;
+        const d = dimmerOutputs[dimIndex];
+        const baseCol = c * 2 + 1; // 1,3,5,...
+
+        for (let j = 0; j < 2; j++) {
+          const jack = document.createElement("div");
+          jack.className = "jack";
+          const physicalId = `${d.id}-jack-${j + 1}`;
+          jack.dataset.jackId = physicalId;
+          jack.dataset.channelId = d.id;
+          jack.dataset.jackType = "output";
+          jack.style.gridColumn = String(baseCol + j);
+          jack.addEventListener("click", onJackClick);
+          row.appendChild(jack);
+        }
+      }
+    }
+
+    function fillLabelRow(rowId) {
+      const row = document.getElementById(rowId);
+      for (let c = 0; c < 12; c++) {
+        const label = document.createElement("div");
+        label.className = "channel-label";
+        label.textContent = c + 1;
+        const baseCol = c * 2 + 1;
+        label.style.gridColumn = `${baseCol} / span 2`;
+        row.appendChild(label);
+      }
+    }
+
+    function buildInputs() {
+      // R10: OUT 1–3 labels
+      fillMultiLabels("multiLabels1", [1, 2, 3]);
+      // R11: OUT 1–3 jacks
+      fillMultiRow("multiRow1", [1, 2, 3]);
+
+      // R12: OUT 4–6 labels
+      fillMultiLabels("multiLabels2", [4, 5, 6]);
+      // R13: OUT 4–6 jacks
+      fillMultiRow("multiRow2", [4, 5, 6]);
+
+      // R14: OUT 7–8 labels (laatste 8 kolommen leeg)
+      fillMultiLabels("multiLabels3", [7, 8], true);
+      // R15: OUT 7–8 jacks
+      fillMultiRow("multiRow3", [7, 8], true);
+    }
+
+    function fillMultiLabels(rowId, outs, padLastEmpty = false) {
+      const row = document.getElementById(rowId);
+      outs.forEach((h, idx) => {
+        const label = document.createElement("div");
+        label.className = "multi-label";
+        label.textContent = `OUT ${h}`;
+        const baseCol = idx * 8 + 1;
+        label.style.gridColumn = `${baseCol} / span 8`;
+        row.appendChild(label);
+      });
+      if (padLastEmpty && outs.length === 2) {
+        // laatste blok (kolom 17–24) leeg laten
+        const spacer = document.createElement("div");
+        spacer.style.gridColumn = "17 / span 8";
+        row.appendChild(spacer);
+      }
+    }
+
+    function fillMultiRow(rowId, outs, padLastEmpty = false) {
+      const row = document.getElementById(rowId);
+      outs.forEach((h, idx) => {
+        const baseCol = idx * 8 + 1;
+        for (let c = 1; c <= circuitsPerHarting; c++) {
+          const jack = document.createElement("div");
+          jack.className = "jack";
+          const jackId = `out-${h}-ch-${c}`;
+          jack.dataset.jackId = jackId;
+          jack.dataset.channelId = jackId;
+          jack.dataset.jackType = "input";
+          jack.style.gridColumn = String(baseCol + c - 1);
+          jack.addEventListener("click", onJackClick);
+          row.appendChild(jack);
+        }
+      });
+      if (padLastEmpty && outs.length === 2) {
+        // kolommen 17–24 leeg laten
+        // niks toevoegen => grid-ruimte blijft leeg
+      }
+    }
+
+    function resizeCableLayer() {
+      const panelRect = panel.getBoundingClientRect();
+      const wrapperRect = rackWrapper.getBoundingClientRect();
+      const width = panelRect.width;
+      const height = panelRect.height;
+      cableLayer.setAttribute("width", width);
+      cableLayer.setAttribute("height", height);
+      cableLayer.style.left = (panelRect.left - wrapperRect.left) + "px";
+      cableLayer.style.top = (panelRect.top - wrapperRect.top) + "px";
+    }
+
+    // --- PATCHING ---
+
+    function onJackClick(e) {
+      const jack = e.currentTarget;
+      const jackType = jack.dataset.jackType;
+
+      // Verwijderen door twee keer op dezelfde jack te klikken (input of output)
+      if (selectedJack === jack) {
+        const jackId = jack.dataset.jackId;
+        const before = connections.length;
+
+        // verwijder ALLE verbindingen waarbij deze jack betrokken is
+        connections = connections.filter(c => 
+          c.inJackId !== jackId && c.outJackId !== jackId
+        );
+
+        jack.classList.remove("selected");
+        selectedJack = null;
+        correctionMode = false;
+        drawAllCables();
+
+        setStatus(
+          before !== connections.length 
+            ? "Verbinding verwijderd."
+            : "Geen verbinding gekoppeld aan deze jack.",
+          "neutral"
+        );
+
+        return;
+      }
+
+      // Gewoon deselecteren (output of input)
+      if (selectedJack === jack) {
+        jack.classList.remove("selected");
+        selectedJack = null;
+        setStatus("Selectie opgeheven.", "neutral");
+        return;
+      }
+
+      // Eerste selectie
+      if (!selectedJack) {
+        selectedJack = jack;
+        jack.classList.add("selected");
+        correctionMode = false;
+        drawAllCables();
+        setStatus("Kies nu een jack aan de andere kant van de patch.", "neutral");
+        return;
+      }
+
+      const prevType = selectedJack.dataset.jackType;
+
+      // Beide aan dezelfde kant -> selectie verplaatsen
+      if (prevType === jackType) {
+        selectedJack.classList.remove("selected");
+        jack.classList.add("selected");
+        selectedJack = jack;
+        setStatus("Kies een jack aan de andere kant van de patch.", "neutral");
+        return;
+      }
+
+      // Nu hebben we een output en een input -> patch maken
+      const outputJack = prevType === "output" ? selectedJack : jack;
+      const inputJack  = prevType === "input"  ? selectedJack : jack;
+
+      const outJackId    = outputJack.dataset.jackId;
+      const outChannelId = outputJack.dataset.channelId;
+      const inJackId     = inputJack.dataset.jackId;
+      const inChannelId  = inputJack.dataset.channelId;
+
+      // één stekker per fysieke jack
+      connections = connections.filter(c => c.outJackId !== outJackId);
+      connections = connections.filter(c => c.inJackId !== inJackId);
+
+      connections.push({ outJackId, outChannelId, inJackId, inChannelId, isCorrect: false });
+
+      selectedJack.classList.remove("selected");
+      selectedJack = null;
+      correctionMode = false;
+
+      drawAllCables();
+      setStatus(`Gepatcht: ${outChannelId} → ${inChannelId}`, "neutral");
+    }
+
+    // --- EVALUATIE ---
+
+    function evaluateConnections() {
+      connections.forEach(c => (c.isCorrect = false));
+
+      const totalRequired = Object.keys(correctPatch).length;
+      let correctCount = 0;
+
+      const byOut = {};
+      connections.forEach(c => {
+        if (!byOut[c.outChannelId]) byOut[c.outChannelId] = [];
+        byOut[c.outChannelId].push(c);
+      });
+
+      for (const [outChannelId, requiredTargets] of Object.entries(correctPatch)) {
+        const requiredArr = Array.isArray(requiredTargets)
+          ? requiredTargets
+          : [requiredTargets];
+
+        const studentList = byOut[outChannelId] || [];
+        const studentTargets = studentList.map(c => c.inChannelId);
+
+        const requiredSet = new Set(requiredArr);
+        const studentSet = new Set(studentTargets);
+
+        const hasAllRequired = requiredArr.every(t => studentSet.has(t));
+        const hasOnlyRequired = studentTargets.every(t => requiredSet.has(t));
+
+        const dimmerFullyCorrect = hasAllRequired && hasOnlyRequired;
+
+        // Markeer juiste cores groen (ook als er extra's zijn)
+        studentList.forEach(c => {
+          if (requiredSet.has(c.inChannelId)) {
+            c.isCorrect = true;
+          }
+        });
+
+        if (dimmerFullyCorrect) {
+          correctCount++;
+        }
+      }
+
+      return { correctCount, totalRequired };
+    }
+
+    // --- CABLES ---
+
+    function drawAllCables() {
+      while (cableLayer.firstChild) {
+        cableLayer.removeChild(cableLayer.firstChild);
+      }
+
+      connections.forEach((conn, index) => {
+        const outJack = findJackElement(conn.outJackId);
+        const inJack  = findJackElement(conn.inJackId);
+        if (!outJack || !inJack) return;
+
+        const panelRect = panel.getBoundingClientRect();
+        const outRect   = outJack.getBoundingClientRect();
+        const inRect    = inJack.getBoundingClientRect();
+
+        const x1 = outRect.left + outRect.width  / 2 - panelRect.left;
+        const y1 = outRect.top  + outRect.height / 2 - panelRect.top;
+        const x2 = inRect.left  + inRect.width   / 2 - panelRect.left;
+        const y2 = inRect.top   + inRect.height  / 2 - panelRect.top;
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const midY = (y1 + y2) / 2 + 60;
+        const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+        path.setAttribute("d", d);
+
+        let strokeColor;
+        if (correctionMode) {
+          strokeColor = conn.isCorrect ? "#8be38b" : "#ffffffcc";
+        } else {
+          const cableColors = ["#f6d365", "#fda085", "#9ad0f5", "#b5ff9e", "#ffb6c1"];
+          strokeColor = cableColors[index % cableColors.length];
+        }
+
+        path.setAttribute("stroke-width", 4);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", strokeColor);
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+        path.setAttribute("opacity", "0.95");
+
+        cableLayer.appendChild(path);
+      });
+
+      panel.querySelectorAll(".jack").forEach(j => j.classList.remove("correct"));
+      if (correctionMode) {
+        connections.forEach(conn => {
+          if (conn.isCorrect) {
+            const o = findJackElement(conn.outJackId);
+            const i = findJackElement(conn.inJackId);
+            o && o.classList.add("correct");
+            i && i.classList.add("correct");
+          }
+        });
+      }
+    }
+
+    function findJackElement(jackId) {
+      return panel.querySelector(`.jack[data-jack-id="${jackId}"]`);
+    }
+
+    // --- STATUS + BUTTONS ---
+
+    function setStatus(msg, type) {
+      statusEl.textContent = msg;
+      statusEl.classList.remove("ok", "error", "neutral");
+      statusEl.classList.add(type || "neutral");
+    }
+
+    function resetPatch() {
+      connections = [];
+      correctionMode = false;
+      drawAllCables();
+      if (selectedJack) {
+        selectedJack.classList.remove("selected");
+        selectedJack = null;
+      }
+      setStatus("Patch gereset. Maak een nieuwe verbinding.", "neutral");
+    }
+
+    function checkPatch() {
+      if (connections.length === 0) {
+        setStatus("Er is nog geen patch om te controleren.", "error");
+        return;
+      }
+
+      const { correctCount, totalRequired } = evaluateConnections();
+      correctionMode = false;
+      drawAllCables();
+
+      if (correctCount === totalRequired) {
+        setStatus(`✅ ${correctCount} / ${totalRequired} dimmerkanalen correct gepatcht.`, "ok");
+      } else {
+        setStatus(`❌ ${correctCount} / ${totalRequired} dimmerkanalen correct gepatcht.`, "error");
+      }
+    }
+
+    function showCorrection() {
+      if (connections.length === 0) {
+        setStatus("Er zijn nog geen verbindingen om te verbeteren.", "error");
+        return;
+      }
+      evaluateConnections();
+      correctionMode = true;
+      drawAllCables();
+      setStatus("Juiste patchkabels zijn lichtgroen gemarkeerd. Extra of foute Patchkabels zijn wit.", "neutral");
+    }
+
+    document.getElementById("resetBtn").addEventListener("click", resetPatch);
+    document.getElementById("checkBtn").addEventListener("click", checkPatch);
+    document.getElementById("showCorrectionBtn").addEventListener("click", showCorrection);
+
+    // --- INIT ---
+
+    function init() {
+      buildOutputs();
+      buildInputs();
+      resizeCableLayer();
+      drawAllCables();
+
+      window.addEventListener("resize", () => {
+        resizeCableLayer();
+        drawAllCables();
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
